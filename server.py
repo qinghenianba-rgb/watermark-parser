@@ -455,14 +455,6 @@ app.add_middleware(
 )
 
 
-# SPA fallback：所有未匹配路由返回 index.html（由 StaticFiles 处理）
-@app.get("/{full_path:path}", include_in_schema=False)
-async def spa_fallback(full_path: str):
-    """让前端路由（/parse、/history 等）在刷新后仍能正常加载"""
-    from starlette.responses import RedirectResponse
-    return RedirectResponse(url="/", status_code=302)
-
-
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "service": "cloud"}

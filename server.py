@@ -451,10 +451,20 @@ app.add_middleware(
 )
 
 
-# ── 静态文件（SPA 前端）挂载在根路径，优先级低于 API 路由 ──────────────
+# ── 静态文件（SPA 前端）挂载到 /static，避免拦截 API 路由 ──────────────
 # Render 工作目录 = 仓库根目录，dist 在 cloud/dist/
 _static = StaticFiles(directory=str(DIST_DIR), html=True)
-app.mount("/", _static)
+app.mount("/static", _static)
+
+
+@app.get("/")
+async def serve_index():
+    """SPA 入口：直接返回 index.html"""
+    from starlette.responses import FileResponse
+    index_path = DIST_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return {"error": "index.html not found"}
 
 
 @app.get("/api/debug")

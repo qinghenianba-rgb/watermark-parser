@@ -13,13 +13,14 @@ from typing import Optional
 from fastapi import FastAPI, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import requests
 
 # ── 部署路径配置 ──────────────────────────────────────────────────────
-# cloud/server.py 在 cloud/ 目录，前端 dist 在 cloud/dist/ 目录
-APP_DIR = Path(__file__).parent
-DIST_DIR = APP_DIR / "dist"
+# Render 工作目录是仓库根目录，server.py 在 cloud/ 子目录
+APP_DIR = Path(__file__).parent          # cloud/
+DIST_DIR = APP_DIR / "dist"              # cloud/dist/
 PORT = int(os.environ.get("PORT", "10000"))
 
 MOBILE_HEADERS = {
@@ -437,11 +438,6 @@ def parse_kuaishou(share_text: str) -> dict:
         "description": title,
     }
 
-# ── 静态文件服务（SPA 前端）─────────────────────────────────────────────
-if DIST_DIR.exists():
-    from fastapi.staticfiles import StaticFiles
-    app.mount("/", StaticFiles(directory=str(DIST_DIR), html=True), name="static")
-
 # ══════════════════════════════════════════════════════════════════════
 # FastAPI 应用
 # ══════════════════════════════════════════════════════════════════════
@@ -453,6 +449,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── 静态文件（SPA 前端）挂载在根路径，优先级低于 API 路由 ──────────────
+# Render 工作目录 = 仓库根目录，dist 在 cloud/dist/
+_static = StaticFiles(directory=str(DIST_DIR), html=True)
+app.mount("/", _static)
+
+
+@app.get("/api/debug")
+async def debug_info():
+    """诊断端点：查看文件路径是否正确"""
+    return {
+        "APP_DIR": str(APP_DIR),
+        "DIST_DIR": str(DIST_DIR),
+        "dist_exists": DIST_DIR.exists(),
+        "index_exists": (DIST_DIR / "index.html").exists(),
+        "files": [str(p.relative_to(APP_DIR)) for p in APP_DIR.rglob("*") if p.is_file()] if APP_DIR.exists() else [],
+    }
 
 
 @app.get("/api/health")
